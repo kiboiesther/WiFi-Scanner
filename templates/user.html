@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Shield - Protection Active</title>
+    <style>
+        :root { --safe-color: #2ecc71; --danger-color: #e74c3c; --bg-color: #f5f6fa; --warning-color: #f39c12; }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-color); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        
+        .container { 
+            text-align: center; 
+            background: white; 
+            padding: 40px; 
+            border-radius: 24px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1); 
+            width: 420px; 
+            transition: all 0.5s ease;
+        }
+        
+        .shield { font-size: 90px; margin-bottom: 20px; transition: transform 0.3s ease; }
+        
+        .status-text { font-size: 26px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+        
+        .advice { color: #7f8c8d; line-height: 1.6; margin-bottom: 25px; font-size: 1em; }
+        
+        /* Threat List Styling */
+        #threat-box { 
+            background: #fff5f5; 
+            border: 2px dashed var(--danger-color); 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-top: 20px; 
+            display: none; 
+        }
+        
+        .threat-label { color: #c0392b; font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 8px; }
+        
+        .rogue-name { 
+            color: var(--danger-color); 
+            font-weight: 800; 
+            font-size: 1.2em; 
+            background: rgba(231, 76, 60, 0.1);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        /* State Classes */
+        .state-standby { border-top: 10px solid #3498db; }
+        .state-safe { border-top: 10px solid var(--safe-color); }
+        .state-danger { border-top: 10px solid var(--danger-color); animation: shake 0.4s infinite; }
+        .state-disconnected { border-top: 10px solid var(--warning-color); background: #fffdf0; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+        }
+
+        button { 
+            padding: 15px 30px; 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<div class="container state-standby" id="card">
+    <div class="shield" id="shield-icon">🛡️</div>
+    <div class="status-text" id="status-title">System Standby</div>
+    <p class="advice" id="advice-text">Enable AI Protection to start monitoring your wireless environment.</p>
+    
+    <button id="start-btn" onclick="initializeProtection()">Enable Protection</button>
+
+    <div id="threat-box">
+        <span class="threat-label" id="threat-header">⚠️ ROGUE ACCESS POINT IDENTIFIED:</span>
+        <div id="rogue-list"></div>
+    </div>
+</div>
+
+<script>
+    let protectionActive = false;
+    let lastStateWasSafe = true;
+
+    function speakAlert(text) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function initializeProtection() {
+        protectionActive = true;
+        document.getElementById('start-btn').style.display = 'none';
+        speakAlert("AI Protection active. Disconnect protocols initialized.");
+        updateDashboard();
+    }
+
+    async function updateDashboard() {
+        if (!protectionActive) return;
+
+        try {
+            const response = await fetch('/api/scan');
+            const data = await response.json();
+            
+            const card = document.getElementById('card');
+            const shield = document.getElementById('shield-icon');
+            const title = document.getElementById('status-title');
+            const advice = document.getElementById('advice-text');
+            const threatBox = document.getElementById('threat-box');
+            const rogueList = document.getElementById('rogue-list');
+            const threatHeader = document.getElementById('threat-header');
+
+            // 1. CHECK FOR AUTOMATIC DISCONNECTION
+            if (data.terminated) {
+                card.className = "container state-disconnected";
+                shield.innerText = "🔌";
+                title.innerText = "Network Terminated";
+                title.style.color = "#f39c12";
+                advice.innerText = `FORCED DISCONNECT: You were connected to ${data.target_ssid}. This network is malicious.`;
+                threatBox.style.display = "block";
+                threatHeader.innerText = "🛑 CONNECTION BLOCKED:";
+                rogueList.innerHTML = `<span class="rogue-name">${data.target_ssid}</span>`;
+                
+                speakAlert(`Emergency Disconnect. You were connected to a malicious network. Connection terminated for your safety.`);
+                
+                // Pause updates briefly so user can read the alert
+                setTimeout(updateDashboard, 10000); 
+                return;
+            }
+
+            // 2. STANDARD DANGER/SAFE DETECTION
+            if (data.unsafe > 0) {
+                card.className = "container state-danger";
+                shield.innerText = "🚫";
+                title.innerText = "Danger Detected";
+                title.style.color = "#e74c3c";
+                advice.innerText = "Rogue access points detected in your vicinity. Do not attempt to connect.";
+                
+                const rogueNames = data.networks
+                    .filter(n => n.status === 'unsafe')
+                    .map(n => `<span class="rogue-name">${n.ssid}</span>`);
+                
+                rogueList.innerHTML = rogueNames.join(" ");
+                threatBox.style.display = "block";
+                threatHeader.innerText = "⚠️ ROGUE ACCESS POINT IDENTIFIED:";
+
+                if (lastStateWasSafe) {
+                    speakAlert("Warning. Malicious wireless signatures detected. Airspace is unsafe.");
+                    lastStateWasSafe = false;
+                }
+            } else {
+                card.className = "container state-safe";
+                shield.innerText = "🛡️";
+                title.innerText = "System Secure";
+                title.style.color = "#2ecc71";
+                advice.innerText = "Your environment is clear. No malicious signatures detected.";
+                threatBox.style.display = "none";
+                lastStateWasSafe = true;
+            }
+        } catch (error) {
+            console.error("Dashboard failed to fetch scan data.");
+        }
+
+        setTimeout(updateDashboard, 5000);
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,159 @@
+/* --- Global Reset & Cyber Theme --- */
+body { 
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; 
+    background: radial-gradient(circle at center, #1a1a1a 0%, #0d0d0d 100%); 
+    color: #e0e0e0; 
+    margin: 0; 
+    padding: 30px; 
+    min-height: 100vh;
+}
+
+/* --- Smooth Grid Layout --- */
+.grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); 
+    gap: 25px; 
+    margin-bottom: 25px; 
+}
+
+/* --- Premium Card Styling (Glassmorphism) --- */
+.card { 
+    background: rgba(30, 30, 30, 0.6); 
+    backdrop-filter: blur(10px);
+    padding: 24px; 
+    border-radius: 16px; 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(0, 255, 0, 0.3);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.9);
+}
+
+/* --- Header & Typography --- */
+h1 {
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 30px;
+    color: #fff;
+}
+
+h2 { 
+    margin-top: 0; 
+    color: #00ff00; 
+    font-size: 0.9em; 
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+    padding-bottom: 15px; 
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* --- Dropdown / Select Styling --- */
+select {
+    background: rgba(40, 40, 40, 0.8);
+    color: #00ff00;
+    border: 1px solid rgba(0, 255, 0, 0.2);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.8em;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+select:hover {
+    background: rgba(50, 50, 50, 1);
+    border-color: #00ff00;
+}
+
+/* --- Table Container (Scrollable) --- */
+.table-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #333 #1a1a1a;
+}
+
+table { 
+    width: 100%; 
+    border-collapse: separate; 
+    border-spacing: 0 8px; 
+    margin-top: 5px; 
+    font-size: 0.85em; 
+}
+
+th { 
+    text-align: left; 
+    color: #666; 
+    text-transform: uppercase;
+    font-size: 0.75em;
+    letter-spacing: 1px;
+    padding: 12px; 
+    position: sticky;
+    top: 0;
+    background: #1e1e1e;
+    z-index: 10;
+}
+
+td { 
+    padding: 12px; 
+    background: rgba(255, 255, 255, 0.02);
+}
+
+tr:hover td {
+    background: rgba(0, 255, 0, 0.05);
+}
+
+td:first-child {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* --- Status Indicators --- */
+.danger-text { 
+    color: #ff4d4d; 
+    font-weight: bold; 
+    text-shadow: 0 0 10px rgba(255, 77, 77, 0.4);
+}
+
+.safe-text { 
+    color: #00ff00; 
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+/* --- Grid Utilities --- */
+.full-width { grid-column: 1 / -1; }
+
+/* --- Chart Canvas --- */
+canvas { 
+    max-height: 250px; 
+    width: 100% !important; 
+    flex-grow: 1; /* Ensures chart fills space in fluid card */
+}
+
+/* --- NEW: Pulse Animation for "Live" status --- */
+.live-indicator {
+    height: 10px;
+    width: 10px;
+    background-color: #00ff00;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px #00ff00;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
+}

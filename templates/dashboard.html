@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Forensic Admin Console</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_admin.css') }}">
+</head>
+<body>
+
+<h1>Admin Command Center</h1>
+
+<div class="grid">
+    <div class="card">
+        <h2>
+            <span>Nearby BSSID Forensic Details</span>
+            <span class="live-indicator"></span>
+        </h2>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>SSID</th>
+                        <th>Status</th>
+                        <th>Signal Strength</th>
+                    </tr>
+                </thead>
+                <tbody id="network-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h2 style="margin: 0; border: none; padding: 0;">Live Signal Tracking</h2>
+            <select id="track-select" style="background: #222; color: #0f0; border: 1px solid #444; border-radius: 4px; padding: 4px; font-size: 0.8em; cursor: pointer;">
+                <option value="first">Auto (Strongest)</option>
+            </select>
+        </div>
+        <canvas id="signalChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h2>Network Environment Health</h2>
+        <canvas id="riskChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h2>XGBoost Feature Importance (Model Weights)</h2>
+        <canvas id="featureChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // Global variable to track user selection
+    let selectedSSID = "first";
+
+    // --- 1. Initialize Charts ---
+    const signalCtx = document.getElementById('signalChart').getContext('2d');
+    const signalChart = new Chart(signalCtx, {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Signal Strength', borderColor: '#00ff00', data: [], fill: false, tension: 0.4 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: -100, max: 0 } } }
+    });
+
+    const riskCtx = document.getElementById('riskChart').getContext('2d');
+    const riskChart = new Chart(riskCtx, {
+        type: 'doughnut',
+        data: { labels: ['Safe', 'Unsafe'], datasets: [{ data: [0, 0], backgroundColor: ['#00ff00', '#ff4d4d'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    const featCtx = document.getElementById('featureChart').getContext('2d');
+    new Chart(featCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Frame Length', 'Signal Strength', 'Protected Flag', 'Retry Bit', 'TSFT Present'],
+            datasets: [{ label: 'Weight', data: [0.42, 0.28, 0.15, 0.10, 0.05], backgroundColor: '#3498db' }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+    });
+
+    // Handle Dropdown Change
+    document.getElementById('track-select').addEventListener('change', (e) => {
+        selectedSSID = e.target.value;
+        // Clear chart labels and data when switching targets to avoid confusing lines
+        signalChart.data.labels = [];
+        signalChart.data.datasets[0].data = [];
+        signalChart.update();
+    });
+
+    // --- 2. Update Function ---
+    async function updateAdmin() {
+        try {
+            const res = await fetch('/api/scan');
+            const data = await res.json();
+
+            // A. Update Dropdown Options (Add new SSIDs found in scan)
+            const select = document.getElementById('track-select');
+            const currentOptions = Array.from(select.options).map(opt => opt.value);
+            
+            data.networks.forEach(n => {
+                if (n.ssid && !currentOptions.includes(n.ssid)) {
+                    let opt = document.createElement('option');
+                    opt.value = n.ssid;
+                    opt.text = n.ssid;
+                    select.add(opt);
+                }
+            });
+
+            // B. Update Table
+            const table = document.getElementById('network-table');
+            table.innerHTML = data.networks.map(n => `
+                <tr>
+                    <td>${n.ssid || 'Unknown'}</td>
+                    <td class="${n.status === 'safe' ? 'safe-text' : 'danger-text'}">${n.status.toUpperCase()}</td>
+                    <td>${n.rssi} dBm</td>
+                </tr>
+            `).join('');
+
+            // C. Update Environment Chart
+            riskChart.data.datasets[0].data = [data.safe, data.unsafe];
+            riskChart.update();
+
+            // D. Logic for Signal Tracking
+            let target = null;
+            if (selectedSSID === "first") {
+                target = data.networks[0]; // Default to strongest
+            } else {
+                target = data.networks.find(n => n.ssid === selectedSSID);
+            }
+
+            if (target) {
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                signalChart.data.labels.push(time);
+                signalChart.data.datasets[0].data.push(target.rssi);
+                signalChart.data.datasets[0].label = `Tracking: ${target.ssid}`;
+
+                if (signalChart.data.labels.length > 10) {
+                    signalChart.data.labels.shift();
+                    signalChart.data.datasets[0].data.shift();
+                }
+                signalChart.update();
+            }
+        } catch (e) { console.error("Admin fetch error", e); }
+    }
+
+    setInterval(updateAdmin, 5000);
+    window.onload = updateAdmin;
+</script>
+
+</body>
+</html>
